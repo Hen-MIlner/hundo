@@ -23,7 +23,11 @@ exports.handler = async (event) => {
     const key = userId.trim().toLowerCase();
 
     // Pull this friend's saved memory
-    const store = getStore("hundo-memory");
+    const store = getStore({
+      name: "hundo-memory",
+      siteID: process.env.BLOBS_SITE_ID,
+      token: process.env.BLOBS_TOKEN,
+    });
     const existing = await store.get(key, { type: "json" });
     const memory = existing?.facts || [];
 
