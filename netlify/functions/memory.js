@@ -12,7 +12,11 @@ const Groq = require("groq-sdk");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 exports.handler = async (event) => {
-  const store = getStore("hundo-memory");
+  const store = getStore({
+    name: "hundo-memory",
+    siteID: process.env.BLOBS_SITE_ID,
+    token: process.env.BLOBS_TOKEN,
+  });
 
   try {
     // ----------------------------------------------------
