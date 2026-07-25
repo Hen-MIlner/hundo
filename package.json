@@ -1,0 +1,12 @@
+{
+  "name": "hundo",
+  "version": "1.0.0",
+  "description": "Hundo — a friend-group LLM chat app powered by Groq, with per-friend memory",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
