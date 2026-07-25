@@ -22,7 +22,7 @@ exports.handler = async (event) => {
 
     const key = userId.trim().toLowerCase();
 
-    // Pull this friend's saved memory (added manually via the Memory panel, or by future auto-save)
+    // Pull this friend's saved memory
     const store = getStore("hundo-memory");
     const existing = await store.get(key, { type: "json" });
     const memory = existing?.facts || [];
@@ -44,7 +44,7 @@ exports.handler = async (event) => {
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant", // Updated to instant model
         messages,
         temperature: 0.8,
         max_tokens: 1024,
@@ -56,7 +56,7 @@ exports.handler = async (event) => {
       console.error("Groq error:", groqRes.status, errText);
       return {
         statusCode: groqRes.status,
-        body: JSON.stringify({ error: "Hundo hit a snag talking to Groq." }),
+        body: JSON.stringify({ error: "Hundo hit a snag talking to Groq.", details: errText }),
       };
     }
 
@@ -70,6 +70,6 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error(err);
-    return { statusCode: 500, body: JSON.stringify({ error: "Server error" }) };
+    return { statusCode: 500, body: JSON.stringify({ error: "Server error", details: err.message }) };
   }
 };
