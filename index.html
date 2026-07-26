@@ -24,7 +24,7 @@
     color: var(--text);
     font-family: 'Inter', sans-serif;
   }
-  .layout { display: flex; height: 100vh; }
+  .layout { display: flex; height: 100vh; height: 100dvh; }
 
   /* Sidebar */
   .sidebar {
@@ -179,7 +179,7 @@
 
   /* Memory panel */
   .memory-panel {
-    position: fixed; top: 0; right: -380px; width: 380px; height: 100vh;
+    position: fixed; top: 0; right: -380px; width: 380px; height: 100vh; height: 100dvh;
     background: var(--panel); border-left: 1px solid var(--border);
     box-shadow: -20px 0 40px -30px rgba(0,0,0,0.3);
     transition: right .22s ease; z-index: 40;
@@ -206,6 +206,53 @@
   .memory-fact .del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; flex-shrink: 0; }
   .memory-fact .del:hover { color: #d64545; }
   .memory-empty { color: var(--text-dim); font-size: 13px; text-align: center; margin-top: 30px; }
+
+  /* Mobile menu button + drawer scrim (hidden on desktop) */
+  .mobile-menu-btn {
+    display: none; width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-size: 16px; cursor: pointer;
+    align-items: center; justify-content: center; margin: 10px 0 0 10px; flex-shrink: 0;
+  }
+  .sidebar-scrim {
+    display: none; position: fixed; inset: 0; background: rgba(28,27,25,0.35); z-index: 39;
+  }
+  .sidebar-scrim.open { display: block; }
+
+  /* ---- Mobile breakpoint ---- */
+  @media (max-width: 768px) {
+    .layout { position: relative; overflow: hidden; }
+
+    .mobile-menu-btn { display: flex; }
+
+    .sidebar {
+      position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh;
+      width: 82%; max-width: 300px; z-index: 40;
+      transform: translateX(-100%); transition: transform .22s ease;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    .main { width: 100%; }
+
+    .welcome { padding: 16px; }
+    .welcome h2 { font-size: 28px; }
+    .welcome p.sub { margin-bottom: 22px; }
+
+    .cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+    #messages { padding: 18px 5%; }
+    .msg { max-width: 88%; font-size: 14px; }
+
+    .input-wrap { padding: 10px 4%; }
+
+    .memory-panel { width: 100%; right: -100%; }
+
+    .login-card { width: 88%; max-width: 320px; padding: 26px 22px; }
+  }
+
+  @media (max-width: 400px) {
+    .welcome h2 { font-size: 24px; }
+    .cards { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -244,6 +291,7 @@
   </aside>
 
   <main class="main">
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu">☰</button>
     <div class="welcome" id="welcome-screen">
       <div class="mark-lg">H</div>
       <h2>Welcome back, <span id="welcome-name">friend</span></h2>
@@ -289,6 +337,8 @@
   </main>
 </div>
 
+<div class="sidebar-scrim" id="sidebar-scrim"></div>
+
 <div class="memory-panel" id="memory-panel">
   <div class="memory-header">
     <h3>Memory</h3>
@@ -322,6 +372,9 @@
   const memoryInput = document.getElementById('memory-input');
   const memoryAddBtn = document.getElementById('memory-add-btn');
   const addMemoryQuick = document.getElementById('add-memory-quick');
+  const sidebarEl = document.querySelector('.sidebar');
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const sidebarScrim = document.getElementById('sidebar-scrim');
 
   let userId = null;
   let conversation = [];
@@ -444,6 +497,13 @@
     memoryInput.value = '';
     loadMemory();
   }
+
+  function openSidebar() { sidebarEl.classList.add('open'); sidebarScrim.classList.add('open'); }
+  function closeSidebar() { sidebarEl.classList.remove('open'); sidebarScrim.classList.remove('open'); }
+  mobileMenuBtn.addEventListener('click', openSidebar);
+  sidebarScrim.addEventListener('click', closeSidebar);
+  newChatBtn.addEventListener('click', closeSidebar);
+  memoryBtn.addEventListener('click', closeSidebar);
 
   memoryBtn.addEventListener('click', () => { memoryPanel.classList.add('open'); loadMemory(); });
   closeMemory.addEventListener('click', () => memoryPanel.classList.remove('open'));
