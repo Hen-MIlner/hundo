@@ -24,7 +24,7 @@
     color: var(--text);
     font-family: 'Inter', sans-serif;
   }
-  .layout { display: flex; height: 100vh; }
+  .layout { display: flex; height: 100vh; height: 100dvh; }
 
   /* Sidebar */
   .sidebar {
@@ -179,7 +179,7 @@
 
   /* Memory panel */
   .memory-panel {
-    position: fixed; top: 0; right: -380px; width: 380px; height: 100vh;
+    position: fixed; top: 0; right: -380px; width: 380px; height: 100vh; height: 100dvh;
     background: var(--panel); border-left: 1px solid var(--border);
     box-shadow: -20px 0 40px -30px rgba(0,0,0,0.3);
     transition: right .22s ease; z-index: 40;
@@ -206,6 +206,56 @@
   .memory-fact .del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; flex-shrink: 0; }
   .memory-fact .del:hover { color: #d64545; }
   .memory-empty { color: var(--text-dim); font-size: 13px; text-align: center; margin-top: 30px; }
+
+  /* Mobile top bar (hidden on desktop) */
+  .mobile-topbar {
+    display: none;
+    align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-topbar .mobile-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+  #hamburger-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    background: var(--bg); font-size: 16px; cursor: pointer;
+  }
+  .sidebar-scrim {
+    display: none;
+    position: fixed; inset: 0; background: rgba(28,27,25,0.35); z-index: 39;
+  }
+
+  /* ---- Mobile layout ---- */
+  @media (max-width: 768px) {
+    .mobile-topbar { display: flex; }
+
+    .layout { height: calc(100vh - 53px); height: calc(100dvh - 53px); flex-direction: column; }
+
+    .sidebar {
+      position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh;
+      width: min(80vw, 300px);
+      transform: translateX(-100%);
+      transition: transform .22s ease;
+      z-index: 41;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-scrim.show { display: block; }
+
+    .welcome { padding: 16px; }
+    .welcome h2 { font-size: 26px; }
+    .welcome p.sub { margin-bottom: 22px; }
+    .cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .card { padding: 12px; }
+
+    #messages { padding: 16px 5%; }
+    .msg { max-width: 88%; font-size: 14px; }
+
+    .input-wrap { padding: 10px 4% 14px; }
+    .input-bar { max-width: 100%; }
+
+    .login-card { width: 88vw; padding: 24px; }
+
+    .memory-panel { width: 100vw; right: -100vw; }
+  }
 </style>
 </head>
 <body>
@@ -220,8 +270,15 @@
   </div>
 </div>
 
+<div class="mobile-topbar" id="mobile-topbar">
+  <button id="hamburger-btn" aria-label="Open menu">☰</button>
+  <div class="mobile-brand"><div class="mark" style="width:22px;height:22px;font-size:11px;">H</div> Hundo</div>
+  <div style="width:32px;"></div>
+</div>
+<div class="sidebar-scrim" id="sidebar-scrim"></div>
+
 <div class="layout">
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div class="mark">H</div>
       <h1>Hundo</h1>
@@ -350,6 +407,24 @@
       location.reload();
     });
   }
+
+  // Mobile sidebar toggle
+  const sidebar = document.getElementById('sidebar');
+  const sidebarScrim = document.getElementById('sidebar-scrim');
+  const hamburgerBtn = document.getElementById('hamburger-btn');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarScrim.classList.add('show');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarScrim.classList.remove('show');
+  }
+  if (hamburgerBtn) hamburgerBtn.addEventListener('click', openSidebar);
+  if (sidebarScrim) sidebarScrim.addEventListener('click', closeSidebar);
+  // Close the sidebar automatically after picking a nav action on mobile
+  [newChatBtn, memoryBtn].forEach((btn) => btn && btn.addEventListener('click', closeSidebar));
 
   function addMessage(text, role) {
     welcomeScreen.style.display = 'none';
