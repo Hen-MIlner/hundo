@@ -1,0 +1,9 @@
+{
+  "name": "hundo",
+  "version": "3.0.0",
+  "description": "Hundo — a friend-group LLM chat app powered by Groq, with per-friend memory, hosted on Cloudflare Workers",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}
