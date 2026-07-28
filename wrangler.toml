@@ -1,0 +1,19 @@
+name = "hundo"
+main = "worker/index.js"
+compatibility_date = "2026-07-28"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# Send /api/* to the Worker script instead of trying to serve it as a static file
+run_worker_first = ["/api/*"]
+
+# KV namespace for per-friend memory (replaces Netlify Blobs).
+# Create the namespace in the dashboard (Storage & Databases → KV), then paste its id below.
+[[kv_namespaces]]
+binding = "HUNDO_MEMORY"
+id = "your-kv-namespace-id-here"
+
+# GROQ_API_KEY is NOT set here — add it as a Secret in the dashboard
+# (Worker → Settings → Variables and Secrets → Add), or with:
+#   npx wrangler secret put GROQ_API_KEY
