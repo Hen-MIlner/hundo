@@ -9,10 +9,9 @@ binding = "ASSETS"
 run_worker_first = ["/api/*"]
 
 # KV namespace for per-friend memory (replaces Netlify Blobs).
-# Create the namespace in the dashboard (Storage & Databases → KV), then paste its id below.
 [[kv_namespaces]]
 binding = "HUNDO_MEMORY"
-id = "your-kv-namespace-id-here"
+id = "ad366d79cea8467081e3194202a90597"
 
 # GROQ_API_KEY is NOT set here — add it as a Secret in the dashboard
 # (Worker → Settings → Variables and Secrets → Add), or with:
