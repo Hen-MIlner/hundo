@@ -1,0 +1,11 @@
+name = "hundo"
+compatibility_date = "2026-07-28"
+pages_build_output_dir = "."
+
+# Optional: only needed for local dev with `wrangler pages dev`.
+# In production, set both the KV binding and GROQ_API_KEY secret in the
+# Cloudflare dashboard instead (Pages project → Settings → Functions / Environment variables).
+#
+# [[kv_namespaces]]
+# binding = "HUNDO_MEMORY"
+# id = "your-kv-namespace-id-here"
