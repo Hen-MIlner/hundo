@@ -78,7 +78,6 @@
     background: var(--orange-soft); color: #c9531a;
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 12px;
-
   }
   .user-row .name { font-size: 13.5px; font-weight: 600; }
   .user-row .tag { font-size: 11.5px; color: var(--text-dim); }
@@ -242,6 +241,7 @@
         <div class="tag">Friend</div>
       </div>
     </div>
+    <button id="switch-user-btn" style="margin-top:8px;background:none;border:none;color:inherit;opacity:0.6;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">Not you? Switch user</button>
   </aside>
 
   <main class="main">
@@ -342,6 +342,14 @@
 
   const savedUser = localStorage.getItem('hundo_user');
   if (savedUser) { nameInput.value = savedUser; initUser(savedUser); }
+
+  const switchUserBtn = document.getElementById('switch-user-btn');
+  if (switchUserBtn) {
+    switchUserBtn.addEventListener('click', () => {
+      localStorage.removeItem('hundo_user');
+      location.reload();
+    });
+  }
 
   function addMessage(text, role) {
     welcomeScreen.style.display = 'none';
