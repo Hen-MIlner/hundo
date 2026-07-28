@@ -1,0 +1,4 @@
+# For local dev only (`wrangler dev`), copy this to .dev.vars — never commit the real one.
+# In production, set GROQ_API_KEY as a Secret in the dashboard instead
+# (or run: npx wrangler secret put GROQ_API_KEY)
+GROQ_API_KEY=gsk_your_key_here
