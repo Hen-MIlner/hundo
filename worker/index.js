@@ -1,35 +1,50 @@
-// worker/index.js
-// One Worker handles everything: serves the static site AND the /api/* routes.
-// GROQ_API_KEY never reaches the browser — it's only read here, server-side.
-
+// Worker: Serves API routes (/api/*) and falls through to static assets.
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const HUNDO_SYSTEM_PROMPT = `You are Hundo — a sharp, funny, straight-talking AI built for a close friend group.
 You're loyal to the group, quick-witted, and conversational. Keep replies concise unless someone asks for depth.`;
 
+// CORS & Helper Utilities
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...CORS_HEADERS,
+    },
   });
 }
 
+// Memory Helper (KV Access)
+async function getMemory(kv, key) {
+  if (!kv) return [];
+  const record = await kv.get(key, { type: "json" });
+  return record?.facts || [];
+}
+
+async function saveMemory(kv, key, facts) {
+  if (!kv) throw new Error("HUNDO_MEMORY KV namespace is missing.");
+  await kv.put(key, JSON.stringify({ facts }));
+}
+
+// Route Handlers
 async function handleChat(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const { message, userId, history = [] } = await request.json();
-    if (!message || !userId) {
+    if (!message?.trim() || !userId?.trim()) {
       return json({ error: "message and userId are required" }, 400);
     }
 
     const key = userId.trim().toLowerCase();
-
-    let memory = [];
-    if (env.HUNDO_MEMORY) {
-      const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
-      memory = existing?.facts || [];
-    }
+    const memory = await getMemory(env.HUNDO_MEMORY, key);
 
     const memoryBlock = memory.length
       ? `\n\nWhat you know about ${userId}:\n- ${memory.join("\n- ")}`
@@ -40,6 +55,10 @@ async function handleChat(request, env) {
       ...history,
       { role: "user", content: message },
     ];
+
+    if (!env.GROQ_API_KEY) {
+      return json({ error: "Server configuration issue: Missing GROQ_API_KEY." }, 500);
+    }
 
     const groqRes = await fetch(GROQ_URL, {
       method: "POST",
@@ -74,43 +93,60 @@ async function handleMemory(request, env) {
   if (request.method === "GET") {
     const userId = (url.searchParams.get("userId") || "").trim().toLowerCase();
     if (!userId) return json({ error: "userId required" }, 400);
-    const existing = await env.HUNDO_MEMORY.get(userId, { type: "json" });
-    return json({ facts: existing?.facts || [] });
+
+    const facts = await getMemory(env.HUNDO_MEMORY, userId);
+    return json({ facts });
   }
 
   if (request.method === "POST") {
     const { userId, fact } = await request.json();
-    if (!userId || !fact) return json({ error: "userId and fact required" }, 400);
+    if (!userId?.trim() || !fact?.trim()) {
+      return json({ error: "userId and fact required" }, 400);
+    }
+
     const key = userId.trim().toLowerCase();
-    const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
-    const facts = existing?.facts || [];
+    const facts = await getMemory(env.HUNDO_MEMORY, key);
     facts.push(fact.trim());
-    await env.HUNDO_MEMORY.put(key, JSON.stringify({ facts }));
+
+    await saveMemory(env.HUNDO_MEMORY, key, facts);
     return json({ facts });
   }
 
   if (request.method === "DELETE") {
     const { userId, index } = await request.json();
-    if (!userId || index === undefined) return json({ error: "userId and index required" }, 400);
+    if (!userId?.trim() || typeof index !== "number" || index < 0) {
+      return json({ error: "Valid userId and numerical index required" }, 400);
+    }
+
     const key = userId.trim().toLowerCase();
-    const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
-    const facts = existing?.facts || [];
+    const facts = await getMemory(env.HUNDO_MEMORY, key);
+
+    if (index >= facts.length) {
+      return json({ error: "Index out of bounds" }, 400);
+    }
+
     facts.splice(index, 1);
-    await env.HUNDO_MEMORY.put(key, JSON.stringify({ facts }));
+    await saveMemory(env.HUNDO_MEMORY, key, facts);
     return json({ facts });
   }
 
   return json({ error: "Method not allowed" }, 405);
 }
 
+// Main Fetch Handler
 export default {
   async fetch(request, env) {
+    // Handle CORS Preflight Requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
     const url = new URL(request.url);
 
     if (url.pathname === "/api/chat") return handleChat(request, env);
     if (url.pathname === "/api/memory") return handleMemory(request, env);
 
-    // Everything else falls through to the static site in /public
+    // Serve static frontend assets
     return env.ASSETS.fetch(request);
   },
 };
