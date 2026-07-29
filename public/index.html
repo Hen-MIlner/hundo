@@ -6,6 +6,11 @@
 <title>Hundo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
 <style>
   :root {
     --bg: #f7f6f4;
@@ -122,10 +127,30 @@
     flex: 1; overflow-y: auto; padding: 30px 10%;
     display: none; flex-direction: column; gap: 16px;
   }
-  .msg { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; }
-  .msg.user { align-self: flex-end; background: var(--orange); color: #fff; border-bottom-right-radius: 5px; }
+  .msg { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 14.5px; line-height: 1.5; word-break: break-word; }
+  .msg p { margin: 0 0 8px 0; }
+  .msg p:last-child { margin-bottom: 0; }
+  .msg pre { background: #272822; color: #f8f8f2; padding: 10px; border-radius: 8px; overflow-x: auto; }
+  .msg code { font-family: monospace; font-size: 13px; }
+  .msg.user { align-self: flex-end; background: var(--orange); color: #fff; border-bottom-right-radius: 5px; white-space: pre-wrap; }
   .msg.bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
-  .msg.bot.loading { color: var(--text-dim); font-style: italic; }
+
+  /* Typing Indicator Animation */
+  .typing-indicator span {
+    width: 6px; height: 6px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    display: inline-block;
+    animation: bounce 1.4s infinite ease-in-out both;
+    margin: 0 2px;
+  }
+  .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+  .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1.0); }
+  }
 
   /* Input bar */
   .input-wrap { padding: 16px 10%; }
@@ -139,6 +164,7 @@
     width: 100%; border: none; outline: none; resize: none;
     font-family: 'Inter', sans-serif; font-size: 14.5px;
     padding: 6px 8px 10px; background: transparent; color: var(--text);
+    max-height: 140px;
   }
   .input-bar-row { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
   .input-tools { display: flex; gap: 4px; }
@@ -207,7 +233,7 @@
   .memory-fact .del:hover { color: #d64545; }
   .memory-empty { color: var(--text-dim); font-size: 13px; text-align: center; margin-top: 30px; }
 
-  /* Mobile top bar (hidden on desktop) */
+  /* Mobile top bar */
   .mobile-topbar {
     display: none;
     align-items: center; justify-content: space-between;
@@ -224,12 +250,9 @@
     position: fixed; inset: 0; background: rgba(28,27,25,0.35); z-index: 39;
   }
 
-  /* ---- Mobile layout ---- */
   @media (max-width: 768px) {
     .mobile-topbar { display: flex; }
-
     .layout { height: calc(100vh - 53px); height: calc(100dvh - 53px); flex-direction: column; }
-
     .sidebar {
       position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh;
       width: min(80vw, 300px);
@@ -239,21 +262,16 @@
     }
     .sidebar.open { transform: translateX(0); }
     .sidebar-scrim.show { display: block; }
-
     .welcome { padding: 16px; }
     .welcome h2 { font-size: 26px; }
     .welcome p.sub { margin-bottom: 22px; }
     .cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .card { padding: 12px; }
-
     #messages { padding: 16px 5%; }
     .msg { max-width: 88%; font-size: 14px; }
-
     .input-wrap { padding: 10px 4% 14px; }
     .input-bar { max-width: 100%; }
-
     .login-card { width: 88vw; padding: 24px; }
-
     .memory-panel { width: 100vw; right: -100vw; }
   }
 </style>
@@ -408,6 +426,12 @@
     });
   }
 
+  // Auto-expand input box height
+  msgInput.addEventListener('input', () => {
+    msgInput.style.height = 'auto';
+    msgInput.style.height = Math.min(msgInput.scrollHeight, 140) + 'px';
+  });
+
   // Mobile sidebar toggle
   const sidebar = document.getElementById('sidebar');
   const sidebarScrim = document.getElementById('sidebar-scrim');
@@ -423,16 +447,24 @@
   }
   if (hamburgerBtn) hamburgerBtn.addEventListener('click', openSidebar);
   if (sidebarScrim) sidebarScrim.addEventListener('click', closeSidebar);
-  // Close the sidebar automatically after picking a nav action on mobile
   [newChatBtn, memoryBtn].forEach((btn) => btn && btn.addEventListener('click', closeSidebar));
 
   function addMessage(text, role) {
     welcomeScreen.style.display = 'none';
     messagesEl.style.display = 'flex';
     currentChatLabel.style.display = 'block';
+
     const div = document.createElement('div');
     div.className = 'msg ' + role;
-    div.textContent = text;
+
+    // Render markdown for bot replies, raw text for user
+    if (role.includes('bot') && typeof marked !== 'undefined' && text !== '') {
+      div.innerHTML = marked.parse(text);
+      div.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
+    } else {
+      div.textContent = text;
+    }
+
     messagesEl.appendChild(div);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return div;
@@ -442,9 +474,13 @@
     if (!text || !userId) return;
     addMessage(text, 'user');
     conversation.push({ role: 'user', content: text });
+    
     msgInput.value = '';
+    msgInput.style.height = 'auto'; // Reset text box height
 
-    const loadingEl = addMessage('Hundo is thinking...', 'bot loading');
+    // Create message with typing animation
+    const loadingEl = addMessage('', 'bot loading');
+    loadingEl.innerHTML = `<div class="typing-indicator"><span></span><span></span><span></span></div>`;
 
     try {
       const res = await fetch('/api/chat', {
@@ -454,6 +490,7 @@
       });
       const data = await res.json();
       loadingEl.remove();
+
       if (!res.ok) { addMessage("Hundo's having connection issues. Try again.", 'bot'); return; }
       addMessage(data.reply, 'bot');
       conversation.push({ role: 'assistant', content: data.reply });
@@ -465,7 +502,10 @@
 
   sendBtn.addEventListener('click', () => sendMessage(msgInput.value.trim()));
   msgInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(msgInput.value.trim()); }
+    if (e.key === 'Enter' && !e.shiftKey) { 
+      e.preventDefault(); 
+      sendMessage(msgInput.value.trim()); 
+    }
   });
 
   document.querySelectorAll('.card').forEach(card => {
