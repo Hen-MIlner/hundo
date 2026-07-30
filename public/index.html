@@ -1,298 +1,554 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Hundo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hundo Chat</title>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<style>
-  :root {
-    --bg: #f7f6f4;
-    --panel: #ffffff;
-    --border: #ececea;
-    --orange: #ff7a30;
-    --orange-soft: #fff1e8;
-    --text: #1c1b19;
-    --text-dim: #8a8781;
-    --sidebar-w: 264px;
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-  }
-  .layout { display: flex; height: 100vh; height: 100dvh; }
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-  /* Sidebar */
-  .sidebar {
-    width: var(--sidebar-w);
-    flex-shrink: 0;
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 18px 14px;
-  }
-  .brand {
-    display: flex; align-items: center; gap: 10px;
-    padding: 6px 8px 18px;
-  }
-  .brand .mark {
-    width: 30px; height: 30px; border-radius: 9px;
-    background: linear-gradient(135deg, #ff7a30, #ff4d4d);
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: 700; font-size: 14px;
-  }
-  .brand h1 { font-size: 17px; margin: 0; letter-spacing: -0.2px; }
-
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 10px; border-radius: 9px;
-    font-size: 14px; font-weight: 500; color: var(--text);
-    cursor: pointer; border: none; background: none; width: 100%; text-align: left;
-  }
-  .nav-item:hover { background: var(--bg); }
-  .nav-item.active { background: var(--orange-soft); color: #c9531a; }
-  .nav-item .icon { width: 17px; text-align: center; opacity: 0.75; }
-
-  .section-label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
-    color: var(--text-dim); margin: 18px 10px 6px;
-  }
-  .chat-list { flex: 1; overflow-y: auto; }
-  .chat-list-item {
-    padding: 8px 10px; border-radius: 8px; font-size: 13.5px;
-    color: var(--text-dim); cursor: pointer;
-  }
-  .chat-list-item:hover { background: var(--bg); color: var(--text); }
-
-  .user-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px; border-top: 1px solid var(--border); margin-top: 8px;
-  }
-  .user-avatar {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--orange-soft); color: #c9531a;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 12px;
-  }
-  .user-row .name { font-size: 13.5px; font-weight: 600; }
-  .user-row .tag { font-size: 11.5px; color: var(--text-dim); }
-
-  /* Main */
-  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-
-  .welcome {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; padding: 20px;
-  }
-  .welcome .mark-lg {
-    width: 56px; height: 56px; border-radius: 16px; margin-bottom: 22px;
-    background: linear-gradient(135deg, #ff7a30, #ff4d4d);
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: 700; font-size: 24px;
-    box-shadow: 0 12px 30px -10px rgba(255,122,48,0.5);
-  }
-  .welcome h2 {
-    font-family: 'Fraunces', serif; font-weight: 500;
-    font-size: 40px; margin: 0 0 8px; text-align: center;
-  }
-  .welcome h2 span { color: var(--orange); }
-  .welcome p.sub { color: var(--text-dim); margin: 0 0 34px; font-size: 15px; }
-
-  .cards {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-    max-width: 780px; width: 100%; margin-bottom: 26px;
-  }
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; padding: 16px; cursor: pointer;
-    transition: border-color .15s, transform .15s;
-  }
-  .card:hover { border-color: var(--orange); transform: translateY(-2px); }
-  .card .cicon { font-size: 18px; margin-bottom: 10px; }
-  .card .ctitle { font-size: 13.5px; font-weight: 600; margin-bottom: 2px; }
-  .card .cdesc { font-size: 12px; color: var(--text-dim); }
-
-  /* Chat area */
-  #messages {
-    flex: 1; overflow-y: auto; padding: 30px 10%;
-    display: none; flex-direction: column; gap: 16px;
-  }
-  .msg { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 14.5px; line-height: 1.5; word-break: break-word; }
-  .msg p { margin: 0 0 8px 0; }
-  .msg p:last-child { margin-bottom: 0; }
-  .msg pre { background: #272822; color: #f8f8f2; padding: 10px; border-radius: 8px; overflow-x: auto; }
-  .msg code { font-family: monospace; font-size: 13px; }
-  .msg.user { align-self: flex-end; background: var(--orange); color: #fff; border-bottom-right-radius: 5px; white-space: pre-wrap; }
-  .msg.bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
-
-  /* Typing Indicator Animation */
-  .typing-indicator span {
-    width: 6px; height: 6px;
-    background: var(--text-dim);
-    border-radius: 50%;
-    display: inline-block;
-    animation: bounce 1.4s infinite ease-in-out both;
-    margin: 0 2px;
-  }
-  .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-  .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1.0); }
-  }
-
-  /* Input bar */
-  .input-wrap { padding: 16px 10%; }
-  .input-bar {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 18px; padding: 10px 12px;
-    box-shadow: 0 10px 30px -18px rgba(0,0,0,0.25);
-    max-width: 780px; margin: 0 auto;
-  }
-  .input-bar textarea {
-    width: 100%; border: none; outline: none; resize: none;
-    font-family: 'Inter', sans-serif; font-size: 14.5px;
-    padding: 6px 8px 10px; background: transparent; color: var(--text);
-    max-height: 140px;
-  }
-  .input-bar-row { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
-  .input-tools { display: flex; gap: 4px; }
-  .tool-btn {
-    width: 32px; height: 32px; border-radius: 9px; border: none;
-    background: var(--bg); color: var(--text-dim); cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 15px;
-  }
-  .tool-btn:hover { background: var(--orange-soft); color: #c9531a; }
-  .send-btn {
-    width: 34px; height: 34px; border-radius: 50%; border: none;
-    background: var(--orange); color: #fff; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; font-size: 15px;
-  }
-  .send-btn:hover { filter: brightness(1.06); }
-  .footnote { text-align: center; font-size: 11.5px; color: var(--text-dim); padding: 4px 0 0; }
-
-  /* Login overlay */
-  .overlay {
-    position: fixed; inset: 0; background: rgba(28,27,25,0.35);
-    display: flex; align-items: center; justify-content: center; z-index: 50;
-  }
-  .login-card {
-    background: var(--panel); border-radius: 18px; padding: 32px;
-    width: 320px; text-align: center; box-shadow: 0 30px 60px -20px rgba(0,0,0,0.3);
-  }
-  .login-card .mark-lg { margin: 0 auto 18px; }
-  .login-card h3 { margin: 0 0 4px; font-size: 19px; }
-  .login-card p { color: var(--text-dim); font-size: 13.5px; margin: 0 0 18px; }
-  .login-card input {
-    width: 100%; padding: 11px 13px; border-radius: 10px;
-    border: 1px solid var(--border); font-size: 14.5px; margin-bottom: 12px;
-  }
-  .login-card button {
-    width: 100%; padding: 11px; border-radius: 10px; border: none;
-    background: var(--orange); color: #fff; font-weight: 600; font-size: 14.5px; cursor: pointer;
-  }
-
-  /* Memory panel */
-  .memory-panel {
-    position: fixed; top: 0; right: -380px; width: 380px; height: 100vh; height: 100dvh;
-    background: var(--panel); border-left: 1px solid var(--border);
-    box-shadow: -20px 0 40px -30px rgba(0,0,0,0.3);
-    transition: right .22s ease; z-index: 40;
-    display: flex; flex-direction: column; padding: 20px;
-  }
-  .memory-panel.open { right: 0; }
-  .memory-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-  .memory-header h3 { margin: 0; font-size: 17px; }
-  .memory-header button { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-dim); }
-  .memory-sub { color: var(--text-dim); font-size: 12.5px; margin: 0 0 16px; }
-  .memory-add { display: flex; gap: 6px; margin-bottom: 16px; }
-  .memory-add input {
-    flex: 1; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border); font-size: 13.5px;
-  }
-  .memory-add button {
-    background: var(--orange); color: #fff; border: none; border-radius: 9px;
-    padding: 0 14px; font-weight: 600; cursor: pointer; font-size: 13.5px;
-  }
-  .memory-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-  .memory-fact {
-    background: var(--bg); border-radius: 10px; padding: 10px 12px;
-    font-size: 13.5px; display: flex; justify-content: space-between; gap: 8px; align-items: flex-start;
-  }
-  .memory-fact .del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; flex-shrink: 0; }
-  .memory-fact .del:hover { color: #d64545; }
-  .memory-empty { color: var(--text-dim); font-size: 13px; text-align: center; margin-top: 30px; }
-
-  /* Mobile top bar */
-  .mobile-topbar {
-    display: none;
-    align-items: center; justify-content: space-between;
-    padding: 10px 14px; background: var(--panel);
-    border-bottom: 1px solid var(--border);
-  }
-  .mobile-topbar .mobile-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
-  #hamburger-btn {
-    width: 32px; height: 32px; border-radius: 8px; border: none;
-    background: var(--bg); font-size: 16px; cursor: pointer;
-  }
-  .sidebar-scrim {
-    display: none;
-    position: fixed; inset: 0; background: rgba(28,27,25,0.35); z-index: 39;
-  }
-
-  @media (max-width: 768px) {
-    .mobile-topbar { display: flex; }
-    .layout { height: calc(100vh - 53px); height: calc(100dvh - 53px); flex-direction: column; }
-    .sidebar {
-      position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh;
-      width: min(80vw, 300px);
-      transform: translateX(-100%);
-      transition: transform .22s ease;
-      z-index: 41;
+  <style>
+    :root {
+      --bg: #f7f6f4;
+      --panel: #ffffff;
+      --border: #ececea;
+      --orange: #ff7a30;
+      --orange-hover: #e5661e;
+      --orange-soft: #fff1e8;
+      --text: #1c1b19;
+      --text-dim: #8a8781;
+      --sidebar-w: 264px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --transition: all 0.2s ease;
     }
-    .sidebar.open { transform: translateX(0); }
-    .sidebar-scrim.show { display: block; }
-    .welcome { padding: 16px; }
-    .welcome h2 { font-size: 26px; }
-    .welcome p.sub { margin-bottom: 22px; }
-    .cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .card { padding: 12px; }
-    #messages { padding: 16px 5%; }
-    .msg { max-width: 88%; font-size: 14px; }
-    .input-wrap { padding: 10px 4% 14px; }
-    .input-bar { max-width: 100%; }
-    .login-card { width: 88vw; padding: 24px; }
-    .memory-panel { width: 100vw; right: -100vw; }
-  }
-</style>
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Layout Structure */
+    .layout {
+      display: flex;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 18px 14px;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px 18px;
+    }
+
+    .brand .mark {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, #ff7a30, #ff4d4d);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .brand h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: -0.3px;
+      font-weight: 700;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      transition: var(--transition);
+    }
+
+    .nav-item:hover { background: var(--bg); }
+    .nav-item.active { background: var(--orange-soft); color: #c9531a; }
+    .nav-item .icon { width: 18px; text-align: center; opacity: 0.75; font-size: 15px; }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      margin: 20px 10px 8px;
+      font-weight: 600;
+    }
+
+    .chat-list { flex: 1; overflow-y: auto; }
+
+    .chat-list-item {
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-list-item:hover { background: var(--bg); color: var(--text); }
+
+    .user-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      margin-top: auto;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--orange-soft);
+      color: #c9531a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .user-row .name { font-size: 13.5px; font-weight: 600; }
+    .user-row .tag { font-size: 11.5px; color: var(--text-dim); }
+
+    .btn-switch {
+      margin-top: 6px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 4px 6px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .btn-switch:hover { color: var(--text); }
+
+    /* Main Area */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
+
+    /* Welcome Container */
+    .welcome {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .welcome .mark-lg {
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #ff7a30, #ff4d4d);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 28px;
+      box-shadow: 0 12px 30px -10px rgba(255, 122, 48, 0.4);
+    }
+
+    .welcome h2 {
+      font-family: 'Fraunces', serif;
+      font-weight: 500;
+      font-size: 38px;
+      margin: 0 0 8px;
+      text-align: center;
+    }
+
+    .welcome h2 span { color: var(--orange); }
+    .welcome p.sub { color: var(--text-dim); margin: 0 0 32px; font-size: 15px; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      max-width: 780px;
+      width: 100%;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card:hover {
+      border-color: var(--orange);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    .card .cicon { font-size: 20px; margin-bottom: 8px; }
+    .card .ctitle { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .card .cdesc { font-size: 12px; color: var(--text-dim); line-height: 1.3; }
+
+    /* Messages Area */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 30px 15%;
+      display: none;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .msg {
+      max-width: 80%;
+      padding: 14px 18px;
+      border-radius: var(--radius-lg);
+      font-size: 14.5px;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .msg p { margin: 0 0 10px 0; }
+    .msg p:last-child { margin-bottom: 0; }
+    .msg pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    .msg code { font-family: 'Fira Code', monospace; font-size: 13px; }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--orange);
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+      white-space: pre-wrap;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+
+    /* Typing Indicator */
+    .typing-indicator span {
+      width: 6px; height: 6px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      display: inline-block;
+      animation: bounce 1.4s infinite ease-in-out both;
+      margin: 0 2px;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1.0); }
+    }
+
+    /* Input Controls */
+    .input-wrap { padding: 12px 15% 20px; }
+
+    .input-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px;
+      box-shadow: 0 10px 30px -15px rgba(0,0,0,0.08);
+      max-width: 780px;
+      margin: 0 auto;
+      transition: border-color 0.2s;
+    }
+
+    .input-bar:focus-within { border-color: rgba(255, 122, 48, 0.5); }
+
+    .input-bar textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      font-size: 14.5px;
+      padding: 4px 6px 8px;
+      background: transparent;
+      color: var(--text);
+      max-height: 140px;
+    }
+
+    .input-bar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px;
+    }
+
+    .tool-btn {
+      width: 32px; height: 32px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--bg);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      transition: var(--transition);
+    }
+
+    .tool-btn:hover { background: var(--orange-soft); color: #c9531a; }
+
+    .send-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: var(--orange);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: var(--transition);
+    }
+
+    .send-btn:hover { background: var(--orange-hover); }
+
+    .footnote {
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-dim);
+      padding: 8px 0 0;
+    }
+
+    /* Modal / Overlay */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(28,27,25,0.4);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .login-card {
+      background: var(--panel);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      width: 340px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      font-size: 14.5px;
+      margin-bottom: 14px;
+      outline: none;
+    }
+
+    .login-card input:focus { border-color: var(--orange); }
+
+    .login-card button {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--orange);
+      color: #fff;
+      font-weight: 600;
+      font-size: 14.5px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .login-card button:hover { background: var(--orange-hover); }
+
+    /* Memory Panel Side-Drawer */
+    .memory-panel {
+      position: fixed;
+      top: 0;
+      right: -380px;
+      width: 380px;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.05);
+      transition: right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    .memory-panel.open { right: 0; }
+
+    .memory-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .memory-header h3 { margin: 0; font-size: 18px; }
+    .memory-header button { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-dim); }
+    .memory-sub { color: var(--text-dim); font-size: 12.5px; margin: 0 0 16px; }
+
+    .memory-add { display: flex; gap: 8px; margin-bottom: 20px; }
+    .memory-add input {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      font-size: 13.5px;
+      outline: none;
+    }
+    .memory-add button {
+      background: var(--orange);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13.5px;
+    }
+
+    .memory-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .memory-fact {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 13.5px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+    .memory-fact .del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 14px; }
+    .memory-fact .del:hover { color: #d64545; }
+    .memory-empty { color: var(--text-dim); font-size: 13px; text-align: center; margin-top: 40px; }
+
+    /* Mobile Adaptations */
+    .mobile-topbar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .sidebar-scrim {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 80;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-topbar { display: flex; }
+      .layout { height: calc(100vh - 53px); height: calc(100dvh - 53px); }
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0;
+        height: 100vh; height: 100dvh;
+        width: 280px;
+        transform: translateX(-100%);
+        z-index: 85;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-scrim.show { display: block; }
+      #messages, .input-wrap { padding-left: 16px; padding-right: 16px; }
+      .cards { grid-template-columns: 1fr 1fr; }
+      .memory-panel { width: 100vw; right: -100vw; }
+    }
+  </style>
 </head>
 <body>
 
 <div class="overlay" id="login-overlay">
   <div class="login-card">
-    <div class="mark-lg">H</div>
-    <h3>Welcome to Hundo</h3>
-    <p>What's your name?</p>
-    <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="24" />
-    <button id="enter-btn">Enter</button>
+    <div class="mark-lg" style="margin:0 auto 16px;">H</div>
+    <h3 style="margin: 0 0 6px;">Welcome to Hundo</h3>
+    <p style="color: var(--text-dim); font-size: 13.5px; margin: 0 0 18px;">Enter your name to start conversing</p>
+    <input id="name-input" type="text" placeholder="e.g. Alex" maxlength="24" aria-label="Name input" />
+    <button id="enter-btn">Continue</button>
   </div>
 </div>
 
-<div class="mobile-topbar" id="mobile-topbar">
-  <button id="hamburger-btn" aria-label="Open menu">☰</button>
-  <div class="mobile-brand"><div class="mark" style="width:22px;height:22px;font-size:11px;">H</div> Hundo</div>
+<div class="mobile-topbar">
+  <button id="hamburger-btn" class="tool-btn" aria-label="Open menu">☰</button>
+  <div style="display:flex; align-items:center; gap:8px; font-weight:700;">
+    <div class="mark" style="width:24px;height:24px;border-radius:6px;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">H</div> 
+    Hundo
+  </div>
   <div style="width:32px;"></div>
 </div>
+
 <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
 <div class="layout">
@@ -301,49 +557,53 @@
       <div class="mark">H</div>
       <h1>Hundo</h1>
     </div>
+
     <button class="nav-item active" id="new-chat-btn"><span class="icon">＋</span> New Chat</button>
     <button class="nav-item" id="memory-btn"><span class="icon">✦</span> Memory</button>
 
-    <div class="section-label">This session</div>
-    <div class="chat-list" id="chat-list">
-      <div class="chat-list-item" id="current-chat-label" style="display:none;">Current conversation</div>
+    <div class="section-label">Active Context</div>
+    <div class="chat-list">
+      <div class="chat-list-item" id="current-chat-label" style="display:none;">Current Conversation</div>
     </div>
 
-    <div class="user-row">
-      <div class="user-avatar" id="avatar-initial">?</div>
-      <div>
-        <div class="name" id="user-name-label">—</div>
-        <div class="tag">Friend</div>
+    <div class="user-footer">
+      <div class="user-row">
+        <div class="user-avatar" id="avatar-initial">?</div>
+        <div>
+          <div class="name" id="user-name-label">—</div>
+          <div class="tag">Friend</div>
+        </div>
       </div>
+      <button class="btn-switch" id="switch-user-btn">Switch User</button>
     </div>
-    <button id="switch-user-btn" style="margin-top:8px;background:none;border:none;color:inherit;opacity:0.6;font-size:12px;cursor:pointer;text-decoration:underline;padding:0;">Not you? Switch user</button>
   </aside>
 
   <main class="main">
     <div class="welcome" id="welcome-screen">
       <div class="mark-lg">H</div>
       <h2>Welcome back, <span id="welcome-name">friend</span></h2>
-      <p class="sub">What's good?</p>
+      <p class="sub">How can I assist you today?</p>
+      
       <div class="cards">
         <div class="card" data-prompt="Roast me a little, but keep it light.">
           <div class="cicon">🔥</div>
-          <div class="ctitle">Roast me</div>
-          <div class="cdesc">keep it light</div>
+          <div class="ctitle">Roast Me</div>
+          <div class="cdesc">Keep it lighthearted</div>
         </div>
         <div class="card" data-prompt="Help me settle an argument with a friend.">
           <div class="cicon">⚖️</div>
-          <div class="ctitle">Settle it</div>
-          <div class="cdesc">an argument</div>
+          <div class="ctitle">Settle an Option</div>
+          <div class="cdesc">Get a clear perspective</div>
         </div>
         <div class="card" data-prompt="Help me plan something fun this weekend.">
           <div class="cicon">🎯</div>
-          <div class="ctitle">Plan something</div>
-          <div class="cdesc">for the weekend</div>
+          <div class="ctitle">Plan Ideas</div>
+          <div class="cdesc">Weekend activities</div>
         </div>
         <div class="card" data-prompt="I just want to talk. What's up?">
           <div class="cicon">💬</div>
-          <div class="ctitle">Just talk</div>
-          <div class="cdesc">no agenda</div>
+          <div class="ctitle">Casual Chat</div>
+          <div class="cdesc">Freeform conversation</div>
         </div>
       </div>
     </div>
@@ -352,15 +612,15 @@
 
     <div class="input-wrap">
       <div class="input-bar">
-        <textarea id="msg-input" rows="1" placeholder="Message Hundo..."></textarea>
+        <textarea id="msg-input" rows="1" placeholder="Message Hundo..." aria-label="Type message"></textarea>
         <div class="input-bar-row">
           <div class="input-tools">
-            <button class="tool-btn" id="add-memory-quick" title="Save something to memory">✦</button>
+            <button class="tool-btn" id="add-memory-quick" title="Save memory">✦</button>
           </div>
-          <button class="send-btn" id="send-btn">➤</button>
+          <button class="send-btn" id="send-btn" aria-label="Send message">➤</button>
         </div>
       </div>
-      <div class="footnote">Hundo can make mistakes · running on Groq</div>
+      <div class="footnote">Hundo can make mistakes · powered by Groq</div>
     </div>
   </main>
 </div>
@@ -368,117 +628,134 @@
 <div class="memory-panel" id="memory-panel">
   <div class="memory-header">
     <h3>Memory</h3>
-    <button id="close-memory">✕</button>
+    <button id="close-memory" aria-label="Close panel">✕</button>
   </div>
-  <p class="memory-sub">What Hundo remembers about you. Add or remove anything.</p>
+  <p class="memory-sub">Saved facts Hundo uses for personalized replies.</p>
+  
   <div class="memory-add">
-    <input id="memory-input" type="text" placeholder="e.g. I play guitar" />
+    <input id="memory-input" type="text" placeholder="e.g. I like indie pop music" />
     <button id="memory-add-btn">Add</button>
   </div>
   <div class="memory-list" id="memory-list"></div>
 </div>
 
 <script>
-  const loginOverlay = document.getElementById('login-overlay');
-  const nameInput = document.getElementById('name-input');
-  const enterBtn = document.getElementById('enter-btn');
-  const welcomeScreen = document.getElementById('welcome-screen');
-  const welcomeName = document.getElementById('welcome-name');
-  const messagesEl = document.getElementById('messages');
-  const msgInput = document.getElementById('msg-input');
-  const sendBtn = document.getElementById('send-btn');
-  const newChatBtn = document.getElementById('new-chat-btn');
-  const currentChatLabel = document.getElementById('current-chat-label');
-  const userNameLabel = document.getElementById('user-name-label');
-  const avatarInitial = document.getElementById('avatar-initial');
-  const memoryBtn = document.getElementById('memory-btn');
-  const memoryPanel = document.getElementById('memory-panel');
-  const closeMemory = document.getElementById('close-memory');
-  const memoryList = document.getElementById('memory-list');
-  const memoryInput = document.getElementById('memory-input');
-  const memoryAddBtn = document.getElementById('memory-add-btn');
-  const addMemoryQuick = document.getElementById('add-memory-quick');
+  // Dynamic Elements
+  const elements = {
+    loginOverlay: document.getElementById('login-overlay'),
+    nameInput: document.getElementById('name-input'),
+    enterBtn: document.getElementById('enter-btn'),
+    welcomeScreen: document.getElementById('welcome-screen'),
+    welcomeName: document.getElementById('welcome-name'),
+    messagesEl: document.getElementById('messages'),
+    msgInput: document.getElementById('msg-input'),
+    sendBtn: document.getElementById('send-btn'),
+    newChatBtn: document.getElementById('new-chat-btn'),
+    currentChatLabel: document.getElementById('current-chat-label'),
+    userNameLabel: document.getElementById('user-name-label'),
+    avatarInitial: document.getElementById('avatar-initial'),
+    memoryBtn: document.getElementById('memory-btn'),
+    memoryPanel: document.getElementById('memory-panel'),
+    closeMemory: document.getElementById('close-memory'),
+    memoryList: document.getElementById('memory-list'),
+    memoryInput: document.getElementById('memory-input'),
+    memoryAddBtn: document.getElementById('memory-add-btn'),
+    addMemoryQuick: document.getElementById('add-memory-quick'),
+    sidebar: document.getElementById('sidebar'),
+    sidebarScrim: document.getElementById('sidebar-scrim'),
+    hamburgerBtn: document.getElementById('hamburger-btn'),
+    switchUserBtn: document.getElementById('switch-user-btn')
+  };
 
   let userId = null;
   let conversation = [];
 
-  function initUser(name) {
-    userId = name.trim();
-    if (!userId) return;
-    localStorage.setItem('hundo_user', userId);
-    welcomeName.textContent = userId;
-    userNameLabel.textContent = userId;
-    avatarInitial.textContent = userId[0].toUpperCase();
-    loginOverlay.style.display = 'none';
+  // Security Helper: Sanitize Strings for Basic HTML display
+  function sanitizeHTML(str) {
+    return str.replace(/[&<>'"]/g, 
+      tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
   }
 
-  enterBtn.addEventListener('click', () => initUser(nameInput.value));
-  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') initUser(nameInput.value); });
+  // Handle Login / Identity
+  function initUser(name) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    
+    userId = trimmed;
+    localStorage.setItem('hundo_user', userId);
+    
+    elements.welcomeName.textContent = userId;
+    elements.userNameLabel.textContent = userId;
+    elements.avatarInitial.textContent = userId[0].toUpperCase();
+    elements.loginOverlay.style.display = 'none';
+  }
+
+  elements.enterBtn.addEventListener('click', () => initUser(elements.nameInput.value));
+  elements.nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') initUser(elements.nameInput.value); });
 
   const savedUser = localStorage.getItem('hundo_user');
-  if (savedUser) { nameInput.value = savedUser; initUser(savedUser); }
+  if (savedUser) { 
+    elements.nameInput.value = savedUser; 
+    initUser(savedUser); 
+  }
 
-  const switchUserBtn = document.getElementById('switch-user-btn');
-  if (switchUserBtn) {
-    switchUserBtn.addEventListener('click', () => {
+  if (elements.switchUserBtn) {
+    elements.switchUserBtn.addEventListener('click', () => {
       localStorage.removeItem('hundo_user');
       location.reload();
     });
   }
 
-  // Auto-expand input box height
-  msgInput.addEventListener('input', () => {
-    msgInput.style.height = 'auto';
-    msgInput.style.height = Math.min(msgInput.scrollHeight, 140) + 'px';
+  // Dynamic Textarea Sizing
+  elements.msgInput.addEventListener('input', () => {
+    elements.msgInput.style.height = 'auto';
+    elements.msgInput.style.height = Math.min(elements.msgInput.scrollHeight, 140) + 'px';
   });
 
-  // Mobile sidebar toggle
-  const sidebar = document.getElementById('sidebar');
-  const sidebarScrim = document.getElementById('sidebar-scrim');
-  const hamburgerBtn = document.getElementById('hamburger-btn');
-
-  function openSidebar() {
-    sidebar.classList.add('open');
-    sidebarScrim.classList.add('show');
+  // Mobile Drawer Navigation
+  function toggleMobileSidebar(open) {
+    elements.sidebar.classList.toggle('open', open);
+    elements.sidebarScrim.classList.toggle('show', open);
   }
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    sidebarScrim.classList.remove('show');
-  }
-  if (hamburgerBtn) hamburgerBtn.addEventListener('click', openSidebar);
-  if (sidebarScrim) sidebarScrim.addEventListener('click', closeSidebar);
-  [newChatBtn, memoryBtn].forEach((btn) => btn && btn.addEventListener('click', closeSidebar));
 
+  if (elements.hamburgerBtn) elements.hamburgerBtn.addEventListener('click', () => toggleMobileSidebar(true));
+  if (elements.sidebarScrim) elements.sidebarScrim.addEventListener('click', () => toggleMobileSidebar(false));
+  [elements.newChatBtn, elements.memoryBtn].forEach(btn => btn?.addEventListener('click', () => toggleMobileSidebar(false)));
+
+  // Message Rendering Logic
   function addMessage(text, role) {
-    welcomeScreen.style.display = 'none';
-    messagesEl.style.display = 'flex';
-    currentChatLabel.style.display = 'block';
+    elements.welcomeScreen.style.display = 'none';
+    elements.messagesEl.style.display = 'flex';
+    elements.currentChatLabel.style.display = 'block';
 
     const div = document.createElement('div');
-    div.className = 'msg ' + role;
+    div.className = `msg ${role}`;
 
-    // Render markdown for bot replies, raw text for user
-    if (role.includes('bot') && typeof marked !== 'undefined' && text !== '') {
+    if (role.includes('bot') && typeof marked !== 'undefined' && text) {
+      // Parse markdown dynamically
       div.innerHTML = marked.parse(text);
       div.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
     } else {
       div.textContent = text;
     }
 
-    messagesEl.appendChild(div);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    elements.messagesEl.appendChild(div);
+    elements.messagesEl.scrollTop = elements.messagesEl.scrollHeight;
     return div;
   }
 
+  // API Interactions
   async function sendMessage(text) {
     if (!text || !userId) return;
+
     addMessage(text, 'user');
     conversation.push({ role: 'user', content: text });
     
-    msgInput.value = '';
-    msgInput.style.height = 'auto'; // Reset text box height
+    elements.msgInput.value = '';
+    elements.msgInput.style.height = 'auto';
 
-    // Create message with typing animation
+    // Show Loading state
     const loadingEl = addMessage('', 'bot loading');
     loadingEl.innerHTML = `<div class="typing-indicator"><span></span><span></span><span></span></div>`;
 
@@ -488,23 +765,30 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, userId, history: conversation.slice(-10) })
       });
+
       const data = await res.json();
       loadingEl.remove();
 
-      if (!res.ok) { addMessage("Hundo's having connection issues. Try again.", 'bot'); return; }
+      if (!res.ok) {
+        addMessage("Hundo's having connection issues. Please try again later.", 'bot');
+        return;
+      }
+
       addMessage(data.reply, 'bot');
       conversation.push({ role: 'assistant', content: data.reply });
     } catch (err) {
       loadingEl.remove();
-      addMessage("Couldn't reach Hundo. Check your connection.", 'bot');
+      addMessage("Couldn't reach the server. Check your internet connection.", 'bot');
     }
   }
 
-  sendBtn.addEventListener('click', () => sendMessage(msgInput.value.trim()));
-  msgInput.addEventListener('keydown', (e) => {
+  // Event Listeners for Interaction
+  elements.sendBtn.addEventListener('click', () => sendMessage(elements.msgInput.value.trim()));
+  
+  elements.msgInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { 
       e.preventDefault(); 
-      sendMessage(msgInput.value.trim()); 
+      sendMessage(elements.msgInput.value.trim()); 
     }
   });
 
@@ -512,40 +796,43 @@
     card.addEventListener('click', () => sendMessage(card.dataset.prompt));
   });
 
-  newChatBtn.addEventListener('click', () => {
+  elements.newChatBtn.addEventListener('click', () => {
     conversation = [];
-    messagesEl.innerHTML = '';
-    messagesEl.style.display = 'none';
-    currentChatLabel.style.display = 'none';
-    welcomeScreen.style.display = 'flex';
+    elements.messagesEl.innerHTML = '';
+    elements.messagesEl.style.display = 'none';
+    elements.currentChatLabel.style.display = 'none';
+    elements.welcomeScreen.style.display = 'flex';
   });
 
-  // --- Memory panel ---
+  // Memory Feature Integration
   async function loadMemory() {
     if (!userId) return;
-    memoryList.innerHTML = '<div class="memory-empty">Loading...</div>';
+    elements.memoryList.innerHTML = '<div class="memory-empty">Loading memory...</div>';
+    
     try {
       const res = await fetch('/api/memory?userId=' + encodeURIComponent(userId));
       const data = await res.json();
       renderMemory(data.facts || []);
     } catch (err) {
-      memoryList.innerHTML = '<div class="memory-empty">Couldn\'t load memory.</div>';
+      elements.memoryList.innerHTML = '<div class="memory-empty">Failed to load memories.</div>';
     }
   }
 
   function renderMemory(facts) {
     if (!facts.length) {
-      memoryList.innerHTML = '<div class="memory-empty">Nothing saved yet.</div>';
+      elements.memoryList.innerHTML = '<div class="memory-empty">No stored facts yet.</div>';
       return;
     }
-    memoryList.innerHTML = '';
+
+    elements.memoryList.innerHTML = '';
     facts.forEach((fact, i) => {
       const row = document.createElement('div');
       row.className = 'memory-fact';
-      row.innerHTML = `<span>${fact}</span><button class="del" data-i="${i}">✕</button>`;
-      memoryList.appendChild(row);
+      row.innerHTML = `<span>${sanitizeHTML(fact)}</span><button class="del" data-i="${i}" title="Delete entry">✕</button>`;
+      elements.memoryList.appendChild(row);
     });
-    memoryList.querySelectorAll('.del').forEach(btn => {
+
+    elements.memoryList.querySelectorAll('.del').forEach(btn => {
       btn.addEventListener('click', async () => {
         const index = parseInt(btn.dataset.i, 10);
         await fetch('/api/memory', {
@@ -559,22 +846,30 @@
   }
 
   async function addFact(fact) {
-    if (!fact.trim() || !userId) return;
+    const trimmed = fact.trim();
+    if (!trimmed || !userId) return;
+
     await fetch('/api/memory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, fact })
+      body: JSON.stringify({ userId, fact: trimmed })
     });
-    memoryInput.value = '';
+    
+    elements.memoryInput.value = '';
     loadMemory();
   }
 
-  memoryBtn.addEventListener('click', () => { memoryPanel.classList.add('open'); loadMemory(); });
-  closeMemory.addEventListener('click', () => memoryPanel.classList.remove('open'));
-  memoryAddBtn.addEventListener('click', () => addFact(memoryInput.value));
-  memoryInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addFact(memoryInput.value); });
-  addMemoryQuick.addEventListener('click', () => { memoryPanel.classList.add('open'); loadMemory(); memoryInput.focus(); });
+  // Memory UI Hooks
+  elements.memoryBtn.addEventListener('click', () => { elements.memoryPanel.classList.add('open'); loadMemory(); });
+  elements.closeMemory.addEventListener('click', () => elements.memoryPanel.classList.remove('open'));
+  elements.memoryAddBtn.addEventListener('click', () => addFact(elements.memoryInput.value));
+  elements.memoryInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addFact(elements.memoryInput.value); });
+  
+  elements.addMemoryQuick.addEventListener('click', () => {
+    elements.memoryPanel.classList.add('open');
+    loadMemory();
+    elements.memoryInput.focus();
+  });
 </script>
-
 </body>
 </html>
