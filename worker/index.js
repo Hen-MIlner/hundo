@@ -4,8 +4,79 @@
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
+// Text-only chat uses the fast/cheap model. Anything with an image switches
+// to a vision-capable model. Groq's lineup changes fairly often — worth
+// checking https://console.groq.com/docs/vision if this ever 404s.
+const TEXT_MODEL = "llama-3.1-8b-instant";
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+
 const HUNDO_SYSTEM_PROMPT = `You are Hundo — a sharp, funny, straight-talking AI built for a close friend group.
-You're loyal to the group, quick-witted, and conversational. Keep replies concise unless someone asks for depth.`;
+You're loyal to the group, quick-witted, and conversational. Keep replies concise unless someone asks for depth.
+If you're given content pulled from a web page, treat it as reference material — read it, then answer naturally.`;
+
+// --- Link reading ---------------------------------------------------------
+// Hundo can "read" a plain public URL (e.g. a news article) that a user
+// pastes into the chat. This only works for pages that don't require a
+// login and don't block bots/serve their content via client-side JS.
+const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/gi;
+const MAX_URLS_PER_MESSAGE = 2;
+const MAX_PAGE_CHARS = 6000;
+const FETCH_TIMEOUT_MS = 8000;
+
+function stripHtml(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(br|p|div|li|h[1-6])[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{2,}/g, "\n\n")
+    .trim();
+}
+
+async function fetchPageText(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; HundoBot/1.0)" },
+    });
+    clearTimeout(timer);
+    if (!res.ok) return { url, error: `Page returned ${res.status}` };
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("text/html")) {
+      return { url, error: "That link isn't a readable HTML page" };
+    }
+
+    const html = await res.text();
+    const text = stripHtml(html).slice(0, MAX_PAGE_CHARS);
+    if (!text) return { url, error: "Couldn't find readable text on that page" };
+    return { url, text };
+  } catch (err) {
+    clearTimeout(timer);
+    return { url, error: "Couldn't fetch that page (it may require login or block bots)" };
+  }
+}
+
+async function buildUrlContext(message) {
+  const urls = [...new Set(message.match(URL_REGEX) || [])].slice(0, MAX_URLS_PER_MESSAGE);
+  if (urls.length === 0) return "";
+
+  const results = await Promise.all(urls.map(fetchPageText));
+  const blocks = results.map((r) =>
+    r.error ? `[Could not read ${r.url}: ${r.error}]` : `[Content from ${r.url}]\n${r.text}`
+  );
+  return "\n\n" + blocks.join("\n\n");
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -18,9 +89,15 @@ async function handleChat(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    const { message, userId, history = [] } = await request.json();
-    if (!message || !userId) {
-      return json({ error: "message and userId are required" }, 400);
+    const { message, userId, history = [], image } = await request.json();
+    if ((!message && !image) || !userId) {
+      return json({ error: "message (or image) and userId are required" }, 400);
+    }
+
+    // Rough ceiling on the base64 payload so one giant upload can't blow out
+    // the request to Groq. ~6MB of raw image data, base64-inflated.
+    if (image && typeof image === "string" && image.length > 8_000_000) {
+      return json({ error: "That image is too large — try one under 6MB." }, 400);
     }
 
     const key = userId.trim().toLowerCase();
@@ -35,11 +112,23 @@ async function handleChat(request, env) {
       ? `\n\nWhat you know about ${userId}:\n- ${memory.join("\n- ")}`
       : "";
 
+    const urlContext = message ? await buildUrlContext(message) : "";
+    const textWithContext = (message || "") + urlContext;
+
+    const userContent = image
+      ? [
+          { type: "text", text: textWithContext || "What's in this image?" },
+          { type: "image_url", image_url: { url: image } },
+        ]
+      : textWithContext;
+
     const messages = [
       { role: "system", content: HUNDO_SYSTEM_PROMPT + memoryBlock },
       ...history,
-      { role: "user", content: message },
+      { role: "user", content: userContent },
     ];
+
+    const model = image ? VISION_MODEL : TEXT_MODEL;
 
     const groqRes = await fetch(GROQ_URL, {
       method: "POST",
@@ -48,7 +137,7 @@ async function handleChat(request, env) {
         Authorization: `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model,
         messages,
         temperature: 0.8,
         max_tokens: 1024,
