@@ -139,6 +139,23 @@
   .msg.user { align-self: flex-end; background: var(--orange); color: #fff; border-bottom-right-radius: 5px; }
   .msg.bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
   .msg.bot.loading { color: var(--text-dim); font-style: italic; }
+  .msg-image { max-width: 240px; max-height: 240px; border-radius: 12px; display: block; margin-bottom: 6px; object-fit: cover; }
+
+  /* Attachment preview (shown above input before sending) */
+  .attachment-preview {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; margin: 0 4px 6px; background: var(--bg);
+    border-radius: 10px;
+  }
+  .attachment-preview img { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+  .attachment-preview .attach-name {
+    font-size: 12px; color: var(--text-dim); flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .attachment-preview .remove-attachment {
+    background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 13px;
+  }
+  .attachment-preview .remove-attachment:hover { color: #d64545; }
 
   /* Input bar */
   .input-wrap { padding: 16px 10%; }
@@ -345,15 +362,18 @@
 
     <div class="input-wrap">
       <div class="input-bar">
-        <textarea id="msg-input" rows="1" placeholder="Message Hundo..."></textarea>
+        <div class="attachment-preview" id="attachment-preview" style="display:none;"></div>
+        <textarea id="msg-input" rows="1" placeholder="Message Hundo... (paste a link or attach a pic)"></textarea>
         <div class="input-bar-row">
           <div class="input-tools">
+            <button class="tool-btn" id="attach-btn" title="Attach an image">📎</button>
+            <input type="file" id="image-input" accept="image/*" style="display:none" />
             <button class="tool-btn" id="add-memory-quick" title="Save something to memory">✦</button>
           </div>
           <button class="send-btn" id="send-btn">➤</button>
         </div>
       </div>
-      <div class="footnote">Hundo can make mistakes · running on Groq</div>
+      <div class="footnote">Hundo can make mistakes · running on Groq · can read public links & images</div>
     </div>
   </main>
 </div>
@@ -391,11 +411,68 @@
   const memoryInput = document.getElementById('memory-input');
   const memoryAddBtn = document.getElementById('memory-add-btn');
   const addMemoryQuick = document.getElementById('add-memory-quick');
+  const attachBtn = document.getElementById('attach-btn');
+  const imageInput = document.getElementById('image-input');
+  const attachmentPreview = document.getElementById('attachment-preview');
 
   let userId = null;
   let conversation = [];
   let currentChatId = null;
   let savedChats = [];
+  let pendingImage = null; // { dataUrl, name } — cleared once sent
+
+  const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+
+  attachBtn.addEventListener('click', () => imageInput.click());
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('That file isn\'t an image.');
+      imageInput.value = '';
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      alert('That image is a bit large — try one under 6MB.');
+      imageInput.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingImage = { dataUrl: reader.result, name: file.name };
+      renderAttachmentPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function renderAttachmentPreview() {
+    if (!pendingImage) {
+      attachmentPreview.style.display = 'none';
+      attachmentPreview.innerHTML = '';
+      return;
+    }
+    attachmentPreview.style.display = 'flex';
+    attachmentPreview.innerHTML = '';
+
+    const img = document.createElement('img');
+    img.src = pendingImage.dataUrl;
+    const name = document.createElement('span');
+    name.className = 'attach-name';
+    name.textContent = pendingImage.name;
+    const remove = document.createElement('button');
+    remove.className = 'remove-attachment';
+    remove.textContent = '✕';
+    remove.addEventListener('click', () => {
+      pendingImage = null;
+      imageInput.value = '';
+      renderAttachmentPreview();
+    });
+
+    attachmentPreview.appendChild(img);
+    attachmentPreview.appendChild(name);
+    attachmentPreview.appendChild(remove);
+  }
 
   function initUser(name) {
     userId = name.trim();
@@ -440,30 +517,64 @@
   // Close the sidebar automatically after picking a nav action on mobile
   [newChatBtn, memoryBtn].forEach((btn) => btn && btn.addEventListener('click', closeSidebar));
 
-  function addMessage(text, role) {
+  function addMessage(text, role, imageDataUrl) {
     welcomeScreen.style.display = 'none';
     messagesEl.style.display = 'flex';
     const div = document.createElement('div');
     div.className = 'msg ' + role;
-    div.textContent = text;
+    if (imageDataUrl) {
+      const img = document.createElement('img');
+      img.className = 'msg-image';
+      img.src = imageDataUrl;
+      div.appendChild(img);
+    }
+    if (text) {
+      const textEl = document.createElement('div');
+      textEl.textContent = text;
+      div.appendChild(textEl);
+    }
     messagesEl.appendChild(div);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return div;
   }
 
   async function sendMessage(text) {
-    if (!text || !userId) return;
-    addMessage(text, 'user');
-    conversation.push({ role: 'user', content: text });
-    msgInput.value = '';
+    text = (text || '').trim();
+    if (!userId || (!text && !pendingImage)) return;
 
-    const loadingEl = addMessage('Hundo is thinking...', 'bot loading');
+    const imageToSend = pendingImage ? pendingImage.dataUrl : null;
+    const looksLikeUrl = /https?:\/\/\S+/i.test(text);
+
+    addMessage(text, 'user', imageToSend);
+    // Store a lightweight placeholder for images in local history/persisted
+    // chats — re-sending full base64 on every later turn (and saving it to
+    // KV) isn't worth it, since the image was only needed for this turn.
+    conversation.push({ role: 'user', content: text || '[sent an image]' });
+
+    msgInput.value = '';
+    pendingImage = null;
+    imageInput.value = '';
+    renderAttachmentPreview();
+
+    const loadingText = imageToSend
+      ? 'Hundo is looking at that...'
+      : looksLikeUrl
+        ? 'Hundo is reading that link...'
+        : 'Hundo is thinking...';
+    const loadingEl = addMessage(loadingText, 'bot loading');
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, userId, history: conversation.slice(-10) })
+        body: JSON.stringify({
+          message: text,
+          userId,
+          // Exclude the message we just pushed above — it's sent separately
+          // as `message`, so including it here would send it to Groq twice.
+          history: conversation.slice(0, -1).slice(-10),
+          image: imageToSend
+        })
       });
       const data = await res.json();
       loadingEl.remove();
