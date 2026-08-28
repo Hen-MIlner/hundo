@@ -6,7 +6,7 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Active Groq models
 const TEXT_MODEL = "llama-3.3-70b-versatile";
-const VISION_MODEL = "llama-3.2-11b-vision-preview";
+const VISION_MODEL = "llama-3.2-90b-vision-preview";
 
 const HUNDO_SYSTEM_PROMPT = `You are Hundo — a sharp, funny, straight-talking AI built for a close friend group.
 You're loyal to the group, quick-witted, and conversational. Keep replies concise unless someone asks for depth.
@@ -154,9 +154,9 @@ async function handleChat(request, env) {
       { role: "user", content: userContent },
     ];
 
-    const model = image ? VISION_MODEL : TEXT_MODEL;
+    let model = image ? VISION_MODEL : TEXT_MODEL;
 
-    const groqRes = await fetch(GROQ_URL, {
+    let groqRes = await fetch(GROQ_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -169,6 +169,29 @@ async function handleChat(request, env) {
         max_tokens: 1024,
       }),
     });
+
+    // Fallback logic: If vision request fails, retry with the main text model
+    if (!groqRes.ok && image) {
+      const fallbackMessages = [
+        { role: "system", content: HUNDO_SYSTEM_PROMPT + memoryBlock },
+        ...history,
+        { role: "user", content: (textWithContext || "What's in this image?") + " [Image attached but vision parsing unavailable]" },
+      ];
+
+      groqRes = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: TEXT_MODEL,
+          messages: fallbackMessages,
+          temperature: 0.8,
+          max_tokens: 1024,
+        }),
+      });
+    }
 
     if (!groqRes.ok) {
       const errText = await groqRes.text();
