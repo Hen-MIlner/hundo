@@ -7,7 +7,7 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 // Text-only chat uses the fast/cheap model. Anything with an image switches
 // to a vision-capable model. Groq's vision lineup changes fairly often —
 // check https://console.groq.com/docs/vision if this ever starts failing.
-const TEXT_MODEL = "llama-3.1-8b-instant";
+const TEXT_MODEL = "llama-3.3-70b-versatile";
 const VISION_MODEL = "qwen/qwen3.6-27b";
 
 const HUNDO_SYSTEM_PROMPT = `You are Hundo — a sharp, funny, straight-talking AI built for a close friend group.
