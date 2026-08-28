@@ -4,24 +4,32 @@
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-// Text-only chat uses the fast/cheap model. Anything with an image switches
-// to a vision-capable model. Groq's vision lineup changes fairly often —
-// check https://console.groq.com/docs/vision if this ever starts failing.
+// Active Groq models
 const TEXT_MODEL = "llama-3.3-70b-versatile";
-const VISION_MODEL = "qwen/qwen3.6-27b";
+const VISION_MODEL = "llama-3.2-11b-vision-preview";
 
 const HUNDO_SYSTEM_PROMPT = `You are Hundo — a sharp, funny, straight-talking AI built for a close friend group.
 You're loyal to the group, quick-witted, and conversational. Keep replies concise unless someone asks for depth.
 If you're given content pulled from a web page, treat it as reference material — read it, then answer naturally.`;
 
 // --- Link reading ---------------------------------------------------------
-// Hundo can "read" a plain public URL (e.g. a news article) that a user
-// pastes into the chat. This only works for pages that don't require a
-// login and don't block bots/serve their content via client-side JS.
 const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/gi;
 const MAX_URLS_PER_MESSAGE = 2;
 const MAX_PAGE_CHARS = 6000;
 const FETCH_TIMEOUT_MS = 8000;
+
+function json(data, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      ...extraHeaders,
+    },
+  });
+}
 
 function stripHtml(html) {
   return html
@@ -41,19 +49,44 @@ function stripHtml(html) {
     .trim();
 }
 
+function isSafeUrl(targetUrl) {
+  try {
+    const parsed = new URL(targetUrl);
+    const hostname = parsed.hostname;
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("169.254.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.")
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function fetchPageText(url) {
+  if (!isSafeUrl(url)) {
+    return { url, error: "Access to private or internal addresses is restricted." };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  
   try {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; HundoBot/1.0)" },
     });
     clearTimeout(timer);
+    
     if (!res.ok) return { url, error: `Page returned ${res.status}` };
 
     const contentType = res.headers.get("content-type") || "";
-    if (!contentType.includes("text/html")) {
+    if (!contentType.toLowerCase().includes("text/html")) {
       return { url, error: "That link isn't a readable HTML page" };
     }
 
@@ -78,41 +111,34 @@ async function buildUrlContext(message) {
   return "\n\n" + blocks.join("\n\n");
 }
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 async function handleChat(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    const { message, userId, history = [], image } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) return json({ error: "Invalid JSON body" }, 400);
+
+    const { message, userId, history = [], image } = body;
     if ((!message && !image) || !userId) {
       return json({ error: "message (or image) and userId are required" }, 400);
     }
 
-    // Rough ceiling on the base64 payload so one giant upload can't blow out
-    // the request to Groq. ~6MB of raw image data, base64-inflated.
     if (image && typeof image === "string" && image.length > 8_000_000) {
       return json({ error: "That image is too large — try one under 6MB." }, 400);
     }
 
     const key = userId.trim().toLowerCase();
 
-    let memory = [];
-    if (env.HUNDO_MEMORY) {
-      const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
-      memory = existing?.facts || [];
-    }
+    const [memoryData, urlContext] = await Promise.all([
+      env.HUNDO_MEMORY ? env.HUNDO_MEMORY.get(key, { type: "json" }) : Promise.resolve(null),
+      message ? buildUrlContext(message) : Promise.resolve(""),
+    ]);
 
+    const memory = memoryData?.facts || [];
     const memoryBlock = memory.length
       ? `\n\nWhat you know about ${userId}:\n- ${memory.join("\n- ")}`
       : "";
 
-    const urlContext = message ? await buildUrlContext(message) : "";
     const textWithContext = (message || "") + urlContext;
 
     const userContent = image
@@ -168,23 +194,27 @@ async function handleMemory(request, env) {
   }
 
   if (request.method === "POST") {
-    const { userId, fact } = await request.json();
-    if (!userId || !fact) return json({ error: "userId and fact required" }, 400);
-    const key = userId.trim().toLowerCase();
+    const body = await request.json().catch(() => null);
+    if (!body || !body.userId || !body.fact) return json({ error: "userId and fact required" }, 400);
+
+    const key = body.userId.trim().toLowerCase();
     const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
     const facts = existing?.facts || [];
-    facts.push(fact.trim());
+    facts.push(body.fact.trim());
+
     await env.HUNDO_MEMORY.put(key, JSON.stringify({ facts }));
     return json({ facts });
   }
 
   if (request.method === "DELETE") {
-    const { userId, index } = await request.json();
-    if (!userId || index === undefined) return json({ error: "userId and index required" }, 400);
-    const key = userId.trim().toLowerCase();
+    const body = await request.json().catch(() => null);
+    if (!body || !body.userId || body.index === undefined) return json({ error: "userId and index required" }, 400);
+
+    const key = body.userId.trim().toLowerCase();
     const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
     const facts = existing?.facts || [];
-    facts.splice(index, 1);
+    facts.splice(body.index, 1);
+
     await env.HUNDO_MEMORY.put(key, JSON.stringify({ facts }));
     return json({ facts });
   }
@@ -194,7 +224,7 @@ async function handleMemory(request, env) {
 
 async function handleChats(request, env) {
   const url = new URL(request.url);
-  const MAX_CHATS = 50; // keep KV usage bounded
+  const MAX_CHATS = 50;
   const keyFor = (userId) => "chats:" + userId.trim().toLowerCase();
 
   if (request.method === "GET") {
@@ -205,21 +235,25 @@ async function handleChats(request, env) {
   }
 
   if (request.method === "POST") {
-    const { userId, chatId, title, messages } = await request.json();
-    if (!userId || !chatId) return json({ error: "userId and chatId required" }, 400);
+    const body = await request.json().catch(() => null);
+    if (!body || !body.userId || !body.chatId) return json({ error: "userId and chatId required" }, 400);
 
-    const key = keyFor(userId);
+    const key = keyFor(body.userId);
     const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
     let chats = existing?.chats || [];
 
     const now = Date.now();
-    const idx = chats.findIndex(c => c.id === chatId);
-    const updatedChat = { id: chatId, title: title || "New chat", messages: messages || [], updatedAt: now };
+    const idx = chats.findIndex((c) => c.id === body.chatId);
+    const updatedChat = {
+      id: body.chatId,
+      title: body.title || "New chat",
+      messages: body.messages || [],
+      updatedAt: now,
+    };
 
     if (idx >= 0) chats[idx] = updatedChat;
     else chats.push(updatedChat);
 
-    // Keep only the most recent MAX_CHATS
     chats = chats.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_CHATS);
 
     await env.HUNDO_MEMORY.put(key, JSON.stringify({ chats }));
@@ -227,13 +261,13 @@ async function handleChats(request, env) {
   }
 
   if (request.method === "DELETE") {
-    const { userId, chatId } = await request.json();
-    if (!userId || !chatId) return json({ error: "userId and chatId required" }, 400);
+    const body = await request.json().catch(() => null);
+    if (!body || !body.userId || !body.chatId) return json({ error: "userId and chatId required" }, 400);
 
-    const key = keyFor(userId);
+    const key = keyFor(body.userId);
     const existing = await env.HUNDO_MEMORY.get(key, { type: "json" });
     let chats = existing?.chats || [];
-    chats = chats.filter(c => c.id !== chatId);
+    chats = chats.filter((c) => c.id !== body.chatId);
 
     await env.HUNDO_MEMORY.put(key, JSON.stringify({ chats }));
     return json({ chats });
@@ -244,13 +278,16 @@ async function handleChats(request, env) {
 
 export default {
   async fetch(request, env) {
+    if (request.method === "OPTIONS") {
+      return json(null, 204);
+    }
+
     const url = new URL(request.url);
 
     if (url.pathname === "/api/chat") return handleChat(request, env);
     if (url.pathname === "/api/memory") return handleMemory(request, env);
     if (url.pathname === "/api/chats") return handleChats(request, env);
 
-    // Everything else falls through to the static site in /public
     return env.ASSETS.fetch(request);
   },
 };
