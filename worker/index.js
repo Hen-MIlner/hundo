@@ -5,8 +5,12 @@
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // Active Groq models — change these two strings to switch models:
-const TEXT_MODEL = "llama-3.3-70b-versatile";
-const VISION_MODEL = "llama-3.2-90b-vision-preview";
+// NOTE: llama-3.3-70b-versatile was decommissioned by Groq on 2026-08-16,
+// and llama-3.2-*-vision-preview was retired even earlier. Using Groq's
+// current recommended replacements below. Check https://console.groq.com/docs/deprecations
+// periodically since Groq retires models fairly often.
+const TEXT_MODEL = "openai/gpt-oss-120b";
+const VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
 
 const HUNDO_SYSTEM_PROMPT = `You are Hundo — a sharp, funny, straight-talking AI built for a close friend group.
 You're loyal to the group, quick-witted, and conversational. Keep replies concise unless someone asks for depth.
