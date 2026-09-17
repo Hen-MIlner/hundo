@@ -4,7 +4,7 @@
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-// Active Groq models
+// Active Groq models — change these two strings to switch models:
 const TEXT_MODEL = "llama-3.3-70b-versatile";
 const VISION_MODEL = "llama-3.2-90b-vision-preview";
 
