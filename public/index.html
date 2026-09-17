@@ -578,7 +578,11 @@
       });
       const data = await res.json();
       loadingEl.remove();
-      if (!res.ok) { addMessage("Hundo's having connection issues. Try again.", 'bot'); return; }
+      if (!res.ok) {
+        const detail = data?.error || `HTTP ${res.status}`;
+        addMessage(`Hundo hit an error: ${detail}`, 'bot');
+        return;
+      }
       addMessage(data.reply, 'bot');
       conversation.push({ role: 'assistant', content: data.reply });
       saveCurrentChat();
